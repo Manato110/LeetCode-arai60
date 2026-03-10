@@ -1,4 +1,4 @@
-# LeetCode-arai60-Manato
+# LeetCode-arai60
 # arai60
 
 問題集: https://1kohei1.com/leetcode/
