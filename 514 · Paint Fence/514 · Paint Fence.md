@@ -1,0 +1,149 @@
+## Step.0
+まずは自力で解く
+
+問題を理解する  
+postが`n`個、塗れる色が`k`色ある  
+同じ色が3か所以上連続しないように塗るときの塗り方が何通りあるかを求める問題と理解した  
+
+数学IIBの漸化式みたいな問題だなと思った  
+
+postが`m`個あるときの、求める塗り方を`A(m)`通りとでも置くと、  
+`A(n)`を求める問題に帰着する  
+
+場合分けがあるな  
+`k = 1`だと、`n <= 2`の時は`1`通り、`n > 3`の時に問題を満たすように塗る方法がないから`0`通り  
+
+ということで、`k >= 2`の場合をこの後は考えていけばよい  
+postが`m`個としたとき、  
+
+ - すべてのpostにおいて、同じ色が連続しないようにして塗る方法は、`k * (k-1) * ... * (k-1) = k*(k-1)^(m-1)`通り  
+   (これを便宜上`B(m)`とおく)  
+ - 同じ色が`j`箇所(ただし`1<= j < m//2`)存在するようにして塗る方法は、`B(m-j)`のように、
+   長さ`(m-j)`のpostで同じ色が連続しないように塗ったところから、postを一つ選んで、
+   post2つに変えるという操作を全てのパターンで考えられるパターンの個数と同じ
+   `B(m-j) * (m-j)Cj`通り考えられる
+
+よって、  
+`A(m) = B(m) + B(m-1)*(m-1)C1 + B(m-2)*(m-2)C2 + ... + B(m-j) * (m-j)Cj + ... + B(m-(m//2))*(m-(m//2))C(m//2)`  
+整理して、  
+`A(m) = B(m)*mC0 + B(m-1)*(m-1)C1 + B(m-2)*(m-2)C2 + ... + B(m-j) * (m-j)Cj + ... + B(m-(m//2))*(m-(m//2))C(m//2)`
+
+したがって、`C(j) = B(m-j)*(m-j)Cj = k*(k-1)^(m-j-1) * (m-j)Cj`を求めていって、  
+`A(n) = C(0) + C(1) + ... + C((n//2))`を出力したらよい  
+
+よく考えたらこれ、DPを使っていない    
+
+実装してみる  
+
+### 書いたコード 1
+```python
+class Solution:
+    """
+    @param n: non-negative integer, n posts
+    @param k: non-negative integer, k colors
+    @return: an integer, the total number of ways
+    """
+    def num_ways(self, n: int, k: int) -> int:
+        # write your code here
+        if k == 1:
+            if n <= 2:
+                return 1
+            else:
+                return 0
+
+        total_ways = 0
+        # num_same_pairs:同じ色が2回連続する箇所の数
+        for num_same_pairs in range((n // 2) + 1):
+            num_blocks = n - num_same_pairs
+            # 隣り合うpostが全て異なる色になるような塗り方の数
+            no_adjacent_color_ways = k * pow(k - 1, num_blocks - 1)
+            comb_of_same_color = math.comb(num_blocks, num_same_pairs)
+            total_ways += no_adjacent_color_ways * comb_of_same_color
+            
+        return total_ways
+```
+
+`AC`  
+所見の人が、このコードを見て、  
+「同じ色が3か所以上連続しないように塗るときの塗り方が何通りあるかを求めているのか」  
+とわかるのだろうか...自分にはできる気がしない  
+ここまでで30分以上使っている  
+コーディングテストでこれが出たら、この解法で解ける自信がない...
+
+ただ、このコードの利点としては、DPのように途中の値を保持する必要がないので、メモリ使用量の効率が良いこと  
+
+計算量の考察  
+時間計算量は、for文の中でCombinationの計算をしており、`nCk`は`O(k)`のオーダー、  
+`k`は`1,...n//2`まで動くので、全体で`O(N^2)`  
+空間計算量は、今回登場する変数は全て更新する過程で前の値は破棄している、よって、`N`の値に依らず、`O(1)`  
+
+## Step.1  
+他の方々のPRを見て勉強する  
+同じように考えている方が何人かいて、安心した  
+
+https://github.com/Yuto729/LeetCode_arai60/blob/paint-fence/paint-fence/main.md  
+末尾2つのpostの色が同じ場合の数`same`と異なる数`diff`で用意し、`same[n] + diff[n]`を最後に返す方法  
+個人的にはこれが一番わかりやすいと思った  
+
+### コード2
+```python
+def numWays(self, n: int, k: int) -> int:
+    num_two_tails_different = [0] * (n + 1)
+    num_two_tails_same = [0] * (n + 1)
+
+    num_two_tails_same[1] = 0
+    num_two_tails_different[1] = k
+    for i in range(2, n + 1):
+        num_two_tails_different[i] = (k - 1) * (num_two_tails_different[i - 1] + num_two_tails_same[i - 1])
+        num_two_tails_same[i] = num_two_tails_different[i - 1]
+    
+    return num_two_tails_same[n] + num_two_tails_different[n]
+```
+
+漸化式を解くことで、まとめて`num_ways`として置くのもあり  
+
+### コード3
+```python
+def numWays(self, n: int, k: int) -> int:
+    num_ways = [0] * (n + 1)
+
+    num_ways[1] = k
+    for i in range(2, n + 1):
+        num_ways[i] = (k - 1) * (num_ways[i - 2] + num_ways[i - 1])
+
+    return num_ways[n - 1] + num_ways[n]
+```
+こんなに簡単になるのか  
+(自分の解法は何だったのか...)
+時間計算量・空間計算量ともに`O(N)`で済む  
+
+## Step.2
+解法の導出過程が分かりやすく、意図をくみ取りやすいコード2について、
+見ずにミスなく3回書く  
+```python
+class Solution:
+    """
+    @param n: non-negative integer, n posts
+    @param k: non-negative integer, k colors
+    @return: an integer, the total number of ways
+    """
+    def num_ways(self, n: int, k: int) -> int:
+        # write your code here
+        num_two_tails_same = [0] * (n + 1)
+        num_two_tails_diff = [0] * (n + 1)
+
+        num_two_tails_same[1] = 0
+        num_two_tails_diff[1] = k
+
+        for i in range(2, n + 1):
+            num_two_tails_same[i] = num_two_tails_diff[i - 1]
+            num_two_tails_diff[i] = (k - 1) * (num_two_tails_same[i - 1] + num_two_tails_diff[i - 1])
+
+        return num_two_tails_same[n] + num_two_tails_diff[n] 
+```
+1回目：`2:30`  
+2回目：`2:15`   
+3回目：`1:36`  
+
+
+
